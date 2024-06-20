@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            display: flex;
+            flex-wrap: wrap;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        .container {
+            display: flex;
+            width: 100%;
+        }
+        .left-panel, .right-panel {
+            padding: 20px;
+        }
+        .left-panel {
+            flex: 3;
+            margin-right: 20px;
+        }
+        .right-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        .vertical-line {
+            border-left: 2px solid #ddd;
+            height: auto;
+            margin-left: 20px;
+            margin-right: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f4f4f4;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .refresh-button {
+            margin-top: 10px;
+            padding: 5px 10px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        .refresh-button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+    <script>
+    async function refreshBalance() {
+        try {
+            const response = await fetch('/balance', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            const data = await response.json();
+            document.getElementById('balance').innerText = `KES ${data.balance}`;
+        } catch (error) {
+            console.error('Error fetching balance:', error);
+            document.getElementById('balance').innerText = 'Error fetching balance';
+        }
+    }
+    </script>
+
+</head>
+<body>
+    <h1>Dashboard</h1>
+    <div class="container">
+        <div class="left-panel">
+            <h2>Country Men</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Message Count</th>
+                        <th>Blocked</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for recipient in recipients %}
+                    <tr>
+                        <td>{{ recipient.name }}</td>
+                        <td>{{ recipient.message_count }}</td>
+                        <td>{{ recipient.blocked }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <h2>Messages List</h2>
+            <ul>
+                {% for message in messages %}
+                <li>{{ message }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div class="vertical-line"></div>
+        <div class="right-panel">
+            <h2>Balance</h2>
+            <p id="balance">KES {{ balance }}</p>
+            <button class="refresh-button" onclick="refreshBalance()">Refresh Balance</button>
+
+            <h2>Top Up with MPESA</h2>
+            <p>1. Using your MPesa-enabled phone, select "Pay Bill" from the M-Pesa menu</p>
+            <p>2. Enter Africa's Talking Business Number <strong>525900</strong></p>
+            <p>3. Enter your Africa's Talking Account Number. Your account number is <strong>RFB2024.api</strong></p>
+            <p>4. Enter the Amount of credits you want to buy (Each sms of 160 characters costs KES 0.8)</p>
+            <p>5. Confirm that all the details are correct and press Ok</p>
+            <p>6. Check your statement to see your payment. Your API account will also be updated</p>
+        </div>
+    </div>
+</body>
+</html>
