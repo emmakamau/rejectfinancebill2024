@@ -21,8 +21,8 @@ def initialize_application(username, api_key):
 def send_bulk_sms(sms, recipients_file, messages_file, timezone):
     global current_message_index
     now = datetime.now(pytz.timezone(timezone))
-    # if now.hour < 8 or now.hour >= 17:
-    #     return  # Only run between 9am and 5pm
+    if now.hour < 8 or now.hour >= 17:
+        return  # Only run between 9am and 5pm
 
     recipients = load_recipients(recipients_file)
     messages = load_messages(messages_file)
