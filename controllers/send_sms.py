@@ -21,7 +21,7 @@ def initialize_application(username, api_key):
 def send_bulk_sms(sms, recipients_file, messages_file, timezone):
     global current_message_index
     now = datetime.now(pytz.timezone(timezone))
-    if now.hour < 8 or now.hour >= 17:
+    if now.hour < 9 or now.hour >= 17:
         return  # Only run between 9am and 5pm
 
     recipients = load_recipients(recipients_file)
@@ -30,33 +30,35 @@ def send_bulk_sms(sms, recipients_file, messages_file, timezone):
         print("No recipients or messages found in the JSON file")
         return
 
-    current_message = messages[current_message_index]
     responses = []
 
-    for recipient in recipients:
-        if recipient.get('blocked'):
-            continue  # Skip blocked recipients
+    for message_index in range(current_message_index, len(messages)):
+        current_message = messages[message_index]
 
-        message = structure_message(recipient.get('name'), current_message)
-        try:
-            response = sms.send(message, [recipient.get('phone')])
-            print(response)
-            status = response.get('SMSMessageData', {}).get('Recipients', [{}])[0].get('status', 'Unknown')
-            number = response.get('SMSMessageData', {}).get('Recipients', [{}])[0].get('number', 'Unknown')
-            response = {'status': status, 'number': number}
-            responses.append(response)
+        for recipient in recipients:
+            if recipient.get('blocked'):
+                continue  # Skip blocked recipients
 
-            if status.lower() == 'success':
-                recipient['message_count'] = recipient.get('message_count', 0) + 1
-            elif status == 'UserInBlacklist':
-                recipient['blocked'] = True  # Mark recipient as blocked
+            message = structure_message(recipient.get('name'), current_message)
+            try:
+                response = sms.send(message, [recipient.get('phone')])
+                print(response)
+                status = response.get('SMSMessageData', {}).get('Recipients', [{}])[0].get('status', 'Unknown')
+                number = response.get('SMSMessageData', {}).get('Recipients', [{}])[0].get('number', 'Unknown')
+                responses.append({'status': status, 'number': number})
 
-        except Exception as e:
-            print(f'Failed to send message: {e}')
-            responses.append({'error': str(e), 'recipient': recipient.get('phone')})
+                if status.lower() == 'success':
+                    recipient['message_count'] = recipient.get('message_count', 0) + 1
+                elif status == 'UserInBlacklist':
+                    recipient['blocked'] = True  # Mark recipient as blocked
 
-    save_recipients(recipients, recipients_file)
-    current_message_index = (current_message_index + 1) % len(messages)
+            except Exception as e:
+                print(f'Failed to send message: {e}')
+                responses.append({'error': str(e), 'recipient': recipient.get('phone')})
+
+        save_recipients(recipients, recipients_file)
+        current_message_index = (message_index + 1) % len(messages)
+
     print("SMS sending task completed with responses:", responses)
 
 
@@ -97,3 +99,10 @@ def structure_message(name, text):
 def opt_out_text():
     opt_out = "OPTOUT NEVER"
     return opt_out
+
+
+# Example usage:
+# username = 'your_africastalking_username'
+# api_key = 'your_africastalking_api_key'
+# sms_service = initialize_sms_service(username, api_key)
+# send_bulk_sms(sms_service, 'recipients.json', 'messages.json', 'Africa/Nairobi')
