@@ -29,10 +29,10 @@ TIMEZONE = 'Africa/Nairobi'
 
 @app.route('/home')
 def hello_world():
-    return 'Hello World! Please work'
+    return 'Hello World!'
 
 
-@app.route('/recipients', methods=['GET'])
+@app.route('/', methods=['GET'])
 def get_recipients():
     try:
         recipients = load_recipients(RECIPIENTS_FILE)

@@ -89,14 +89,17 @@
 
 </head>
 <body>
-    <h1>Dashboard</h1>
+    <h3>This app sends continuous messages to Members of Parliament (MPs) urging them to #RejectFinanceBill2024.
+        The messages are highlighted below.
+        To support this effort, load more credits using the Paybill provided. The will app operates between 8 am and 5 pm.</h3>
     <div class="container">
         <div class="left-panel">
-            <h2>Country Men</h2>
+            <h2>Country Men and Women</h2>
             <table>
                 <thead>
                     <tr>
                         <th>Name</th>
+                        <th>Constituency</th>
                         <th>Message Count</th>
                         <th>Blocked</th>
                     </tr>
@@ -105,6 +108,7 @@
                     {% for recipient in recipients %}
                     <tr>
                         <td>{{ recipient.name }}</td>
+                        <th>{{ recipient.constituency }}</th>
                         <td>{{ recipient.message_count }}</td>
                         <td>{{ recipient.blocked }}</td>
                     </tr>
