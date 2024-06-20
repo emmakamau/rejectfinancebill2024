@@ -79,7 +79,9 @@ if __name__ == "__main__":
         scheduler_thread.start()
         logging.info("Scheduler thread started")
 
+        # Read the port from the environment variable
+        port = int(os.environ.get('PORT', 5000))
         # Start the Flask application
-        app.run(debug=True, host='0.0.0.0')
+        app.run(debug=True, host='0.0.0.0', port=port)
     except Exception as e:
         logging.error(f"Error in main execution: {e}")
