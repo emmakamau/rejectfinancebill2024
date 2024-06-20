@@ -1,85 +1,101 @@
-import os
-import schedule
-import time
-import threading
-from dotenv import load_dotenv
-from flask import Flask, render_template, jsonify
-from controllers.send_sms import load_recipients, load_messages, initialize_sms_service, send_bulk_sms, initialize_application
-import logging
+import json
+import africastalking
+from datetime import datetime
+import pytz
 
-# Set up logging
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
-
-app = Flask(__name__)
-
-# Load environment variables
-load_dotenv()
-
-username = os.getenv('AFRICASTALKING_USERNAME')
-api_key = os.getenv('AFRICASTALKING_APIKEY')
-if not username or not api_key:
-    logging.error("AFRICASTALKING_USERNAME or AFRICASTALKING_APIKEY not found in environment variables.")
-sms = initialize_sms_service(username, api_key)
+current_message_index = 0
 
 
-RECIPIENTS_FILE = 'recipients.json'
-MESSAGES_FILE = 'messages.json'
-TIMEZONE = 'Africa/Nairobi'
+def initialize_sms_service(username, api_key):
+    africastalking.initialize(username, api_key)
+    return africastalking.SMS
 
 
-@app.route('/home')
-def hello_world():
-    return 'Hello World!'
+def initialize_application(username, api_key):
+    africastalking.initialize(username, api_key)
+    application = africastalking.Application
+    res = application.fetch_application_data()
+    return res
 
 
-@app.route('/', methods=['GET'])
-def get_recipients():
+def send_bulk_sms(sms, recipients_file, messages_file, timezone):
+    global current_message_index
+    now = datetime.now(pytz.timezone(timezone))
+    if now.hour < 9 or now.hour >= 17:
+        return  # Only run between 9am and 5pm
+
+    recipients = load_recipients(recipients_file)
+    messages = load_messages(messages_file)
+    if not recipients or not messages:
+        print("No recipients or messages found in the JSON file")
+        return
+
+    responses = []
+
+    for recipient in recipients:
+        if recipient.get('blocked'):
+            continue  # Skip blocked recipients
+
+        current_message = messages[current_message_index]
+        message = structure_message(recipient.get('name'), current_message)
+        try:
+            response = sms.send(message, [recipient.get('phone')])
+            print(response)
+            status = response.get('SMSMessageData', {}).get('Recipients', [{}])[0].get('status', 'Unknown')
+            number = response.get('SMSMessageData', {}).get('Recipients', [{}])[0].get('number', 'Unknown')
+            responses.append({'status': status, 'number': number})
+
+            if status.lower() == 'success':
+                recipient['message_count'] = recipient.get('message_count', 0) + 1
+            elif status == 'UserInBlacklist':
+                recipient['blocked'] = True  # Mark recipient as blocked
+
+        except Exception as e:
+            print(f'Failed to send message: {e}')
+            responses.append({'error': str(e), 'recipient': recipient.get('phone')})
+
+        # Update the message index for the next recipient
+        current_message_index = (current_message_index + 1) % len(messages)
+
+    save_recipients(recipients, recipients_file)
+    print("SMS sending task completed with responses:", responses)
+
+
+def load_recipients(file_path):
     try:
-        recipients = load_recipients(RECIPIENTS_FILE)
-        messages = load_messages(MESSAGES_FILE)
-
-        balance_info = initialize_application(username, api_key)
-        actual_balance = balance_info['UserData']['balance']
-
-        logging.debug(f"Balance: {actual_balance}")
-
-        balance = actual_balance
-        return render_template("recipients.html", recipients=recipients, messages=messages, balance=balance)
-    except Exception as e:
-        logging.error(f"Error in get_recipients: {e}")
-        return "Error fetching recipients and messages", 500
+        with open(file_path, 'r') as file:
+            recipients = json.load(file)
+            sorted_recipients = sorted(recipients, key=lambda r: r.get('blocked', False))
+            return sorted_recipients
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        print(f'Error loading recipients: {e}')
+        return []
 
 
-@app.route('/balance', methods=['GET'])
-def get_balance():
+def load_messages(file_path):
     try:
-        balance_info = initialize_application(username, api_key)
-        actual_balance = balance_info['UserData']['balance']
-        return jsonify(balance=actual_balance)
-    except Exception as e:
-        logging.error(f"Error in get_balance: {e}")
-        return jsonify(error=str(e)), 500
+        with open(file_path, 'r') as file:
+            return json.load(file)
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        print(f'Error loading messages: {e}')
+        return []
 
 
-def run_scheduler():
-    while True:
-        schedule.run_pending()
-        time.sleep(1)
-
-
-if __name__ == "__main__":
+def save_recipients(recipients, file_path):
     try:
-        # Schedule the SMS sending task
-        schedule.every(5).minutes.do(send_bulk_sms, sms=sms, recipients_file=RECIPIENTS_FILE, messages_file=MESSAGES_FILE, timezone=TIMEZONE)
-        logging.info("Scheduler initialized")
-
-        # Start the scheduler in a separate thread
-        scheduler_thread = threading.Thread(target=run_scheduler)
-        scheduler_thread.daemon = True
-        scheduler_thread.start()
-        logging.info("Scheduler thread started")
-
-        # Start the Flask application
-        app.run(debug=True, host='0.0.0.0', port=5000)
+        with open(file_path, 'w') as file:
+            json.dump(recipients, file, indent=4)
     except Exception as e:
-        logging.error(f"Error in main execution: {e}")
+        print(f'Error saving recipients: {e}')
+
+
+def structure_message(name, text):
+    opt_out = opt_out_text()
+    message = f"Hello {name}, {text}. {opt_out}"
+    return message
+
+
+def opt_out_text():
+    opt_out = "OPTOUT NEVER"
+    return opt_out
+
