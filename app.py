@@ -70,7 +70,7 @@ def run_scheduler():
 if __name__ == "__main__":
     try:
         # Schedule the SMS sending task
-        schedule.every(5).minute.do(send_bulk_sms, sms=sms, recipients_file=RECIPIENTS_FILE, messages_file=MESSAGES_FILE, timezone=TIMEZONE)
+        schedule.every(5).minutes.do(send_bulk_sms, sms=sms, recipients_file=RECIPIENTS_FILE, messages_file=MESSAGES_FILE, timezone=TIMEZONE)
         logging.info("Scheduler initialized")
 
         # Start the scheduler in a separate thread
