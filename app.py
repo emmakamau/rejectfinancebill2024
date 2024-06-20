@@ -70,12 +70,12 @@ def run_scheduler():
 if __name__ == "__main__":
     try:
         # Schedule the SMS sending task
-        schedule.every().minute.do(send_bulk_sms, sms=sms, recipients_file=RECIPIENTS_FILE, messages_file=MESSAGES_FILE, timezone=TIMEZONE)
+        schedule.every(5).minute.do(send_bulk_sms, sms=sms, recipients_file=RECIPIENTS_FILE, messages_file=MESSAGES_FILE, timezone=TIMEZONE)
         logging.info("Scheduler initialized")
 
         # Start the scheduler in a separate thread
         scheduler_thread = threading.Thread(target=run_scheduler)
-        scheduler_thread.daemon = True  # Allow the program to exit even if this thread is still running
+        scheduler_thread.daemon = True
         scheduler_thread.start()
         logging.info("Scheduler thread started")
 

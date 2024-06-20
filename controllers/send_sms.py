@@ -63,7 +63,9 @@ def send_bulk_sms(sms, recipients_file, messages_file, timezone):
 def load_recipients(file_path):
     try:
         with open(file_path, 'r') as file:
-            return json.load(file)
+            recipients = json.load(file)
+            sorted_recipients = sorted(recipients, key=lambda r: r.get('blocked', False))
+            return sorted_recipients
     except (FileNotFoundError, json.JSONDecodeError) as e:
         print(f'Error loading recipients: {e}')
         return []
